@@ -38,6 +38,13 @@ class FoodDetailsSerializer(serializers.ModelSerializer):
         model = Food
         fields = ['id', 'name', 'price', 'hotel', 'category']
 
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['price_with_tax'] = f"₹{round(float(rep['price']), 2)}"
+        rep['price'] = f"₹{rep['price']}"
+        rep['currency'] = "INR"
+        return rep
+
 
 class FoodCreateSerializer(serializers.ModelSerializer):
     """
