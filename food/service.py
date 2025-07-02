@@ -47,7 +47,7 @@ def get_food_items(request):
 
     except (ValueError, FieldError) as e:
         logger.warning("Invalid query parameter in get_food_items: %s", str(e))
-        raise BadRequestException("Invalid filter value or field.")
+        raise BadRequestException(key='INVALID_FOOD_FIELD_VALUE')
 
 
 def insert_food_items(request):

@@ -5,7 +5,7 @@ from rest_framework import serializers
 from .models import Hotel
 from address.models import Address
 from utils.exceptions import BadRequestException
-from food.serializer import  FoodDetailsSerializer
+from food.serializer import  FoodOnlyViewSerializer
 
 class AddressSerializer(serializers.ModelSerializer):
     """
@@ -35,11 +35,18 @@ class HotelItemViewSerializer(serializers.ModelSerializer):
     food_items = serializers.SerializerMethodField()
     class Meta:
         model = Hotel
-        fields = ['name', 'address','status', 'food_items']
+        fields = ['id', 'name', 'address','status', 'food_items']
 
     def get_food_items(self, obj):
         active_foods = obj.foods.filter(status__iexact='active')
-        return FoodDetailsSerializer(active_foods, many=True).data
+        return FoodOnlyViewSerializer(active_foods, many=True).data
+    
+    def to_representation(self, instance):
+        """
+        Increment view count before serializing
+        """
+        instance.increment_view_count()
+        return super().to_representation(instance)
 
 
 class HotelCreateSerializer(serializers.ModelSerializer):
@@ -52,7 +59,11 @@ class HotelCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Hotel
-        fields = ['name', 'address', 'user']
+        fields = ['id', 'name', 'address', 'user']
+        extra_kwargs = {
+            'address': {'validators': []},
+            'user': {'validators': []}
+        }
 
     def validate_name(self, value):
         """
@@ -62,7 +73,7 @@ class HotelCreateSerializer(serializers.ModelSerializer):
         """
         pattern = r'^[A-Za-z ]{2,100}$'
         if not re.match(pattern, value):
-            raise BadRequestException(f"Given name: '{value}' is invalid.")
+            raise BadRequestException(key='INVALID_HOTEL_NAME')
         return value
 
     def validate_address(self, value):
@@ -72,9 +83,11 @@ class HotelCreateSerializer(serializers.ModelSerializer):
             Address: Validated address object.
         """
         if value.status != "Active":
-            raise BadRequestException(f"Given address '{value}' is inactive.")
+            raise BadRequestException(key='INACTIVE_ADDRESS')
+        if Hotel.objects.filter(address=value).exists():
+                raise BadRequestException(key='HOTEL_WITH_ADDRESS_EXISTS')
         return value
-    
+
     
 class HotelUpdateSerializer(serializers.ModelSerializer):
     """
@@ -93,5 +106,5 @@ class HotelUpdateSerializer(serializers.ModelSerializer):
             Address: Validated address object.
         """
         if value.status != "Active":
-            raise BadRequestException(f"Given address '{value}' is inactive.")
+            raise BadRequestException(key='INACTIVE_ADDRESS')
         return value

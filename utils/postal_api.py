@@ -1,5 +1,6 @@
 import requests
 from utils.exceptions import BadRequestException
+from requests.exceptions import RequestException, Timeout, HTTPError, ConnectionError
 
 
 def get_city_state_from_pincode(pincode):
@@ -8,10 +9,14 @@ def get_city_state_from_pincode(pincode):
         response = requests.get(url, timeout=5)
         data = response.json()
         if data[0]['Status'] == 'Success':
-            post_office = data[0]['PostOffice'][0]
-            city = post_office['District']
-            state = post_office['State']
+            city = data[0]['PostOffice'][0]['District']
+            state = data[0]['PostOffice'][0]['State']
             return {'city': city, 'state': state}
-    except Exception as e:
-        print(e)
+    except (Timeout, ConnectionError) as e:
+        BadRequestException(f"Network-related error: {e}")
+    except ValueError as e:
+        BadRequestException(f"Invalid JSON response: {e}")
+    except (KeyError, IndexError, TypeError) as e:
+        BadRequestException(f"Unexpected data structure: {e}")
+
     return {'city': '', 'state': ''}

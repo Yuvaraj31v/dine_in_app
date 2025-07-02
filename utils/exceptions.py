@@ -22,20 +22,25 @@ class BadRequestException(APIException):
     status_code = status.HTTP_400_BAD_REQUEST
     code = error_code_dict['BAD_REQUEST']['error_code']
     message = error_code_dict['BAD_REQUEST']['error_message']
+    default_code = 'bad_request'
+    default_detail = 'Bad request.'
 
-    def __init__(self,message=None):
-        self.message = (message or "")
-        super().__init__(detail=self.message)
+    def __init__(self, key=None, message=None):
+        if key and key in error_code_dict:
+            error_info = error_code_dict[key]
+            code = error_info.get('error_code', self.default_code)
+            message = message or error_info.get('error_message', self.default_detail)
+        else:
+            code = self.default_code
+            message = message or self.default_detail
 
- 
+        self.code = code
+        super().__init__({'code': code, 'message': message})
+
+
+
 
 class DatabaseIntegrityException(APIException):
     status_code = status.HTTP_409_CONFLICT
     code = error_code_dict['DATABASE_INTEGRITY']['error_code']
     message = error_code_dict['DATABASE_INTEGRITY']['error_message']
-
-class FieldValidationException(APIException):
-    status_code = status.HTTP_409_CONFLICT
-    code = error_code_dict['DATABASE_INTEGRITY']['error_code']
-    message = error_code_dict['DATABASE_INTEGRITY']['error_message']    
-

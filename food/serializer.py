@@ -55,14 +55,14 @@ class FoodCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Food
-        fields = ['name', 'price', 'category', 'hotel']
+        fields = ['id', 'name', 'price', 'category', 'hotel']
 
     def validate_name(self, value):
         """
         Validates food name: only alphabets and spaces allowed (2–100 chars).
         """
         if not re.match(r'^[A-Za-z ]{2,100}$', value):
-            raise BadRequestException("Given name is invalid.")
+            raise BadRequestException(key="INVALID_FOOD_NAME")
         return value
 
     def validate_price(self, value):
@@ -71,7 +71,7 @@ class FoodCreateSerializer(serializers.ModelSerializer):
         """
         value_str = str(value)
         if not re.match(r'^\d+(\.\d{1,2})?$', value_str) or value <= 0:
-            raise BadRequestException("Given price is invalid.")
+            raise BadRequestException(key='INVALID_PRICE')
         return round(value, 2)
 
     def validate_category(self, value):
@@ -79,7 +79,7 @@ class FoodCreateSerializer(serializers.ModelSerializer):
         Ensures category is active.
         """
         if value.status != "Active":
-            raise BadRequestException("Given category is inactive.")
+            raise BadRequestException(key="INACTIVE_CATEGORY")
         return value
 
     def validate_hotel(self, value):
@@ -87,5 +87,22 @@ class FoodCreateSerializer(serializers.ModelSerializer):
         Ensures hotel is active.
         """
         if value.status != "Active":
-            raise BadRequestException("Given hotel is inactive.")
+            raise BadRequestException(key='INACTIVE_HOTEL')
         return value
+
+
+class FoodOnlyViewSerializer(serializers.ModelSerializer):
+    """
+    Serializer for viewing Food details only.
+    """
+
+    class Meta:
+        model = Food
+        fields = ['id', 'name', 'price']
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['price_with_tax'] = f"₹{round(float(rep['price']), 2)}"
+        rep['price'] = f"₹{rep['price']}"
+        rep['currency'] = "INR"
+        return rep

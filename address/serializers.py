@@ -5,8 +5,9 @@ from rest_framework import serializers
 from .models import Address
 from utils.postal_api import get_city_state_from_pincode
 from utils.exceptions import BadRequestException
+from utils.constants import error_code_dict
 
-logger = logging.getLogger(__name__)  # Logger for this serializer module
+logger = logging.getLogger(__name__)
 
 class AddressCreateSerializer(serializers.ModelSerializer):
     """
@@ -16,7 +17,7 @@ class AddressCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Address
-        fields = ['id', 'area', 'street', 'pincode']
+        fields = ['id', 'area', 'street', 'pincode', 'city', 'state']
 
     def validate_street(self, value):
         """
@@ -24,10 +25,10 @@ class AddressCreateSerializer(serializers.ModelSerializer):
         """
         if not value.strip():
             logger.debug("Street validation failed: empty string")
-            raise BadRequestException("Street cannot be empty.")
+            raise BadRequestException(key='EMPTY_STREET')
         if len(value) < 3:
             logger.debug("Street validation failed: less than 3 characters")
-            raise BadRequestException("Street must be at least 3 characters long.")
+            raise BadRequestException(key='IMPROPER_STREET')
         return value
 
     def validate_area(self, value):
@@ -36,10 +37,10 @@ class AddressCreateSerializer(serializers.ModelSerializer):
         """
         if not value.strip():
             logger.debug("Area validation failed: empty string")
-            raise BadRequestException("Area cannot be empty.")
+            raise BadRequestException(key='EMPTY_AREA')
         if len(value) < 3:
             logger.debug("Area validation failed: less than 3 characters")
-            raise BadRequestException("Area must be at least 3 characters long.")
+            raise BadRequestException(key='IMPROPER_AREA')
         return value
 
     def validate_pincode(self, value):
@@ -49,7 +50,7 @@ class AddressCreateSerializer(serializers.ModelSerializer):
         """
         if not str(value).isdigit() or len(str(value)) != 6:
             logger.debug(f"Pincode validation failed: not a 6-digit number -> {value}")
-            raise BadRequestException("Pincode must be a 6-digit number.")
+            raise BadRequestException(key='IMPROPER_PINCODE')
 
         logger.debug(f"Fetching city/state for pincode: {value}")
         location = get_city_state_from_pincode(value)
@@ -57,7 +58,7 @@ class AddressCreateSerializer(serializers.ModelSerializer):
 
         if not location.get('city') or not location.get('state'):
             logger.debug(f"Invalid or unsupported pincode: {value}")
-            raise BadRequestException("Invalid or unsupported pincode.")
+            raise BadRequestException(key='UNSUPPORTED_PINCODE')
 
         return value
 
