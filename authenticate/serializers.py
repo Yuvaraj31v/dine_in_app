@@ -1,3 +1,4 @@
+import logging
 from django.contrib.auth import authenticate
 from django.db import IntegrityError
 
@@ -11,6 +12,10 @@ from utils.exceptions import (
     BadRequestException,
     DatabaseIntegrityException,
 )
+from utils.constants import error_code_dict
+
+logger = logging.getLogger(__name__)
+
 
 class LoginSerializers(serializers.Serializer):
     """
@@ -29,14 +34,19 @@ class LoginSerializers(serializers.Serializer):
         Raises custom exceptions for invalid or inactive users.
         """
         email = data.get('email')
-        password = data.get('password')
-        user = authenticate(email=email, password=password)
+        logger.debug(f"Login attempt started for email: {email}")
+
+        user = authenticate(email=email, password=data.get('password'))
 
         if user is None:
+            logger.warning(f"Login failed: Invalid credentials for email: {email}")
             raise InvalidLoginException()
 
         if not user.status:
+            logger.warning(f"Login blocked: Inactive user account for email: {email}")
             raise UserInactiveException()
+
+        logger.info(f"Login successful for user ID: {user.id}")
 
         refresh = RefreshToken.for_user(user)
         return {
@@ -48,6 +58,7 @@ class LoginSerializers(serializers.Serializer):
             'last_login': user.last_login,
         }
 
+
 class RegisterSerializers(serializers.ModelSerializer):
     """
     Serializer for handling user registration input and creation.
@@ -55,7 +66,7 @@ class RegisterSerializers(serializers.ModelSerializer):
 
     password = serializers.CharField(write_only=True)
     email = serializers.EmailField(validators=[])
-    role = serializers.CharField(validators=[])  
+    role = serializers.CharField(validators=[])
 
     class Meta:
         model = CustomUser
@@ -66,9 +77,10 @@ class RegisterSerializers(serializers.ModelSerializer):
         Check if the email already exists and raise a custom error message.
         """
         if CustomUser.objects.filter(email=value).exists():
+            logger.warning(f"Registration failed: Duplicate email attempted -> {value}")
             raise BadRequestException(key='DUPLICATE_EMAIL')
         return value
-    
+
     def validate_role(self, value):
         """
         Custom validation for the role field.
@@ -77,6 +89,7 @@ class RegisterSerializers(serializers.ModelSerializer):
         """
         valid_roles = [choice[0] for choice in CustomUser.ROLE_CHOICES]
         if value not in valid_roles:
+            logger.warning(f"Registration failed: Invalid role attempted -> {value}")
             raise BadRequestException(key='INVALID_ROLE')
         return value
 
@@ -86,12 +99,9 @@ class RegisterSerializers(serializers.ModelSerializer):
         - Must be at least 3 characters long
         - Must contain only letters and spaces
         """
-        if len(value) < 3:
+        if len(value) < 3 or not value.replace(" ", "").isalpha():
+            logger.warning(f"Registration failed: Invalid name -> '{value}'")
             raise BadRequestException(key='INVALID_USER_NAME')
-        
-        if not value.replace(" ", "").isalpha():
-            raise BadRequestException(key='INVALID_USER_NAME')
-        
         return value
 
     def create(self, validated_data):
@@ -101,10 +111,13 @@ class RegisterSerializers(serializers.ModelSerializer):
         email = validated_data.get('email')
         try:
             user = CustomUser.objects.create_user(**validated_data)
+            logger.info(f"User created successfully with ID: {user.id}")
             return user
-        except IntegrityError as e:
+        except IntegrityError:
+            logger.error(f"Database integrity error during registration for email: {email}")
             raise DatabaseIntegrityException()
         except Exception as e:
+            logger.exception(f"Unexpected error during registration for email: {email}")
             raise BadRequestException()
 
 
