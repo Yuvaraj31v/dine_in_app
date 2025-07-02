@@ -1,10 +1,9 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from utils.exceptions import BadRequestException
 from django.db import models
-from django.utils import timezone
 from utils.models import BaseModel
 
-class CustomUserManager(BaseUserManager):
+class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise BadRequestException()
@@ -14,7 +13,7 @@ class CustomUserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-class CustomUser(AbstractBaseUser, PermissionsMixin,BaseModel):
+class CustomUser(AbstractBaseUser, PermissionsMixin, BaseModel):
     
     ROLE_CHOICES = (
         ('admin', 'Admin'),
@@ -28,7 +27,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin,BaseModel):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='customer')
 
 
-    objects = CustomUserManager()
+    objects = UserManager()
 
     USERNAME_FIELD = 'email'
 
