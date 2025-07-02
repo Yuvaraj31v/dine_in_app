@@ -54,10 +54,45 @@ class RegisterSerializers(serializers.ModelSerializer):
     """
 
     password = serializers.CharField(write_only=True)
+    email = serializers.EmailField(validators=[])
+    role = serializers.CharField(validators=[])  
 
     class Meta:
         model = CustomUser
         fields = ['email', 'name', 'password', 'role']
+
+    def validate_email(self, value):
+        """
+        Check if the email already exists and raise a custom error message.
+        """
+        if CustomUser.objects.filter(email=value).exists():
+            raise BadRequestException(key='DUPLICATE_EMAIL')
+        return value
+    
+    def validate_role(self, value):
+        """
+        Custom validation for the role field.
+        - Role must be either manager, customer or admin
+        - Role contain only letters
+        """
+        valid_roles = [choice[0] for choice in CustomUser.ROLE_CHOICES]
+        if value not in valid_roles:
+            raise BadRequestException(key='INVALID_ROLE')
+        return value
+
+    def validate_name(self, value):
+        """
+        Custom validation for the name field.
+        - Must be at least 3 characters long
+        - Must contain only letters and spaces
+        """
+        if len(value) < 3:
+            raise BadRequestException(key='INVALID_USER_NAME')
+        
+        if not value.replace(" ", "").isalpha():
+            raise BadRequestException(key='INVALID_USER_NAME')
+        
+        return value
 
     def create(self, validated_data):
         """

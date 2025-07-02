@@ -35,13 +35,13 @@ def get_hotel_item(request):
 
         elif hotel_name:
             if not re.fullmatch(VALID_NAME_PATTERN, hotel_name):
-                raise BadRequestException(f"Invalid hotel_name: '{hotel_name}'")
+                raise BadRequestException(key='INVALID_HOTEL_NAME')
             logger.debug("Filter: hotel_name = %s", hotel_name)
             queryset = Hotel.objects.filter(name=hotel_name, status='Active')
 
         elif area:
             if not re.fullmatch(VALID_NAME_PATTERN, area):
-                raise BadRequestException(f"Invalid area: '{area}'")
+                raise BadRequestException(key="INVALID_AREA")
             logger.debug("Filter: area = %s", area)
             queryset = Hotel.objects.filter(address__area=area, status='Active')
 
@@ -54,7 +54,7 @@ def get_hotel_item(request):
 
     except (ValueError, FieldError) as e:
         logger.error("Filter error in get_hotel_item: %s", str(e))
-        raise BadRequestException("Invalid filter format or field.")
+        raise BadRequestException(key='INVALID_HOTEL_FIELD_OR_FORMAT')
 
 
 def insert_hotel_items(request):
@@ -67,12 +67,12 @@ def insert_hotel_items(request):
 
     if serializer.is_valid():
         try:
-            instance = serializer.save()
-            logger.info("Hotel created: %s (ID: %s)", instance.name, instance.id)
+            serializer.save()
             return serializer.data
         except IntegrityError as e:
             logger.error("Insert failed due to integrity error: %s", str(e))
-            raise BadRequestException("Hotel with this address or user already exists.")
+            raise BadRequestException(key='HOTEL_WITH_ADDRESS_EXISTS')
+    raise BadRequestException(str(serializer.errors))
 
 def update_hotel_item(request):
     """
@@ -84,13 +84,13 @@ def update_hotel_item(request):
     address_id = request.data.get('address_id')
 
     if not hotel_id:
-        raise BadRequestException("Hotel ID is required.")
+        raise BadRequestException(key='HOTEL_ID_REQUIRED')
 
     update_data = {}
 
     if hotel_name:
         if not re.fullmatch(VALID_NAME_PATTERN, hotel_name):
-            raise BadRequestException("Invalid hotel name.")
+            raise BadRequestException(key='INVALID_HOTEL_NAME')
         update_data['name'] = hotel_name
 
     if address_id:
@@ -106,7 +106,7 @@ def update_hotel_item(request):
     try:
         queryset = Hotel.objects.filter(id=hotel_id)
         if not queryset.exists():
-            raise BadRequestException("No hotel found to update.")
+            raise BadRequestException(key='NO_HOTEL_FOUND')
         queryset.update(**update_data)
         hotel = queryset.first() 
         logger.info("Hotel updated: %s", hotel_id)
@@ -124,7 +124,7 @@ def remove_hotel(request):
     hotel_id = request.query_params.get('hotel_id')
 
     if not hotel_id:
-        raise BadRequestException("No hotel ID received.")
+        raise BadRequestException(key='HOTEL_ID_REQUIRED')
 
     try:
         hotel_id = int(hotel_id)
@@ -135,6 +135,6 @@ def remove_hotel(request):
         return {"message": f"Hotel {hotel_id} deactivated."}
     except (ValueError, FieldError) as e:
         logger.error("Invalid hotel_id format: %s", str(e))
-        raise BadRequestException("Invalid hotel ID format.")
+        raise BadRequestException(key='INVALID_HOTEL_FIELD_OR_FORMAT')
     except ObjectDoesNotExist:
-        raise BadRequestException("Hotel not found.")
+        raise BadRequestException(key="NO_HOTEL_FOUND")

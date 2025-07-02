@@ -83,20 +83,20 @@ def update_address_items(request):
 
     if not address_id:
         logger.warning("Missing address_id in update request")
-        raise BadRequestException("Address ID is required to update address.")
+        raise BadRequestException(key='ADDRESS_ID_REQUIRED')
 
     update_data = {}
 
     if area:
         if not re.match(r'^[A-Za-z ]{2,100}$', area):
             logger.debug("Area validation failed: %s", area)
-            raise BadRequestException("Invalid address format or field.")
+            raise BadRequestException(key='INVALID_ADDRESS_FORMAT')
         update_data['area'] = area
 
     if street:
         if not re.match(r'^[A-Za-z ]{2,100}$', street):
             logger.debug("Street validation failed: %s", street)
-            raise BadRequestException("Invalid address format or field.")
+            raise BadRequestException(key='INVALID_ADDRESS_FORMAT')
         update_data['street'] = street
 
     try:
@@ -105,9 +105,9 @@ def update_address_items(request):
         logger.info("Address with ID %s updated successfully", address_id)
     except ObjectDoesNotExist:
         logger.error("Address with ID %s not found", address_id)
-        raise BadRequestException("Address ID not present")
+        raise BadRequestException(key='ADDRESS_NOT_PRESENT')
     except IntegrityError:
         logger.error("Integrity error while updating address ID: %s", address_id)
-        raise BadRequestException("Given address not present")
+        raise BadRequestException(key='ADDRESS_NOT_PRESENT')
 
     return AddressViewItemSerializer(address_item).data

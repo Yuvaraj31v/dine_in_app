@@ -1,13 +1,13 @@
 import logging
 
-from django.utils import timezone  # Django framework (major)
+from django.utils import timezone
 
-from rest_framework import status  # third-party Django add-ons
+from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from .serializers import LoginSerializers, RegisterSerializers, UserSerializer  # local app
+from .serializers import LoginSerializers, RegisterSerializers, UserSerializer
 from utils.exceptions import AuthorizationException, BadRequestException
 from core.logger_config import setup_logging
 
